@@ -8,21 +8,16 @@ healthUsingGet().then((res) => {
   console.log(res)
 })
 
-
-const loginUserStore = useLoginUserStore()
-loginUserStore.fetchLoginUser()
-
+// 由于已经在access.ts中获取登录信息了，这里就不需要重复获取了
+//const loginUserStore = useLoginUserStore()
+//loginUserStore.fetchLoginUser()
 </script>
-
-
 
 <template>
   <div id="app">
     <Basiclayout />
   </div>
 </template>
-
-
 
 <style>
 #qpp {}

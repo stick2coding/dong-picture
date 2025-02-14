@@ -1,9 +1,13 @@
 import HomePage from '@/pages/HomePage.vue'
-import UserLoginPage from '@/pages/UserLoginPage.vue'
+import UserLoginPage from '@/pages/user/UserLoginPage.vue'
 import PictureManagePage from '@/pages/PictureManagePage.vue'
 import { MailOutlined } from '@ant-design/icons-vue'
 import { h } from 'vue'
-import { ACCESS_ENUM } from '@/stores/LoginValidate'
+
+import UserRegisterPage from '@/pages/user/UserRegisterPage.vue'
+import UserManagePage from '@/pages/admin/UserManagePage.vue'
+import { ACCESS_ENUM } from '@/access/accessEnum'
+import noAuth from '@/pages/NoAuth.vue'
 
 const routes = [
   {
@@ -29,13 +33,34 @@ const routes = [
     }
   },
   {
+    path: '/user/register',
+    name: '用户注册',
+    component: UserRegisterPage,
+  },
+  {
+    path: '/admin/userManage',
+    name: '用户管理',
+    component: UserManagePage,
+    meta: {
+      authCheck: ACCESS_ENUM.ADMIN,
+    }
+  },
+  {
     path: '/picture/manage',
     name: '图片管理',
     component: PictureManagePage,
     meta: {
       authCheck: ACCESS_ENUM.ADMIN,
     }
-  }
+  },
+  {
+    path: '/noAuth',
+    name: '无权限页面',
+    component: noAuth,
+    meta: {
+      show: false,
+    }
+  },
 ]
 
 export { routes }

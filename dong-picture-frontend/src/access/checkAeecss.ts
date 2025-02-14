@@ -1,4 +1,3 @@
-//定义校验方法
 import { ACCESS_ENUM } from '@/access/accessEnum'
 
 const checkAccess = (loginUser: any, needAccess = ACCESS_ENUM.NOT_LOGIN) => {
@@ -27,4 +26,4 @@ const checkAccess = (loginUser: any, needAccess = ACCESS_ENUM.NOT_LOGIN) => {
   return true;
 }
 
-//export default checkAccess;
+export default checkAccess;

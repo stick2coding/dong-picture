@@ -14,13 +14,35 @@
       </a-col>
       <!--中间显示菜单，同时要给菜单配置跳转事件，见doMenuClick定义，同时这里需要绑定事件-->
       <a-col flex="auto">
-        <a-menu v-model:selectedKeys="current" mode="horizontal" :items="items" @click="doMenuClick" />
+        <a-menu
+          v-model:selectedKeys="current"
+          mode="horizontal"
+          :items="items"
+          @click="doMenuClick"
+        />
       </a-col>
       <!--顶部栏右侧显示登录信息-->
       <a-col flex="120px">
         <div class="user-login-status">
           <div v-if="loginUserStore.loginUser.id">
-            {{ loginUserStore.loginUser.username ?? '无名' }}
+            <!--            显示头像-->
+            <a-dropdown>
+              <ASpace>
+                <!--                先头像-->
+                <a-avatar :src="loginUserStore.loginUser.userAvatar" />
+                <!--                再名字-->
+                {{ loginUserStore.loginUser.userName ?? '无名' }}
+              </ASpace>
+<!--              增加悬浮菜单-->
+              <template #overlay>
+                <a-menu>
+                  <a-menu-item @click="doLogout">
+                    <LogoutOutlined />
+                    退出登录
+                  </a-menu-item>
+                </a-menu>
+              </template>
+            </a-dropdown>
           </div>
           <div v-else>
             <a-button type="primary" href="/user/login">登录</a-button>
@@ -35,15 +57,17 @@
 <script lang="ts" setup>
 //导入类库
 import { computed, h, ref } from 'vue'
-import { MailOutlined, AppstoreOutlined, SettingOutlined } from '@ant-design/icons-vue'
-import { MenuProps } from 'ant-design-vue'
+import { LogoutOutlined } from '@ant-design/icons-vue'
+import { MenuProps, message } from 'ant-design-vue'
 //导入路由
 import { useRouter } from 'vue-router'
 //导入用户信息存储
 import { useLoginUserStore } from '@/stores/useLoginUserStore.ts'
 //导入路由表
 import { routes } from '@/router/routes'
-import checkAccess from '@/stores/LoginValidate'
+
+import { userLogoutUsingPost } from '@/api/userController.ts'
+import checkAccess from '@/access/checkAeecss'
 
 //定义全局变量
 //定义用户信息使用
@@ -80,24 +104,26 @@ router.afterEach((to, from, next) => {
 
 const items = computed(() =>
   // 遍历
-  routes.filter((item) => {
-    // 判断是否显示
-    if(item.meta?.show == false){
-      return false
-    }
-    // 判断权限、
-    if(!checkAccess(loginUserStore.loginUser, item.meta?.authCheck as String)){
-      return false
-    }
-    return true
-  }).map((item) => {
-    return {
-      key: item.path,
-      icon: item.meta?.icon,
-      label: item.name,
-      title: item.name,
-    }
-  }),
+  routes
+    .filter((item) => {
+      // 判断是否显示
+      if (item.meta?.show == false) {
+        return false
+      }
+      // 判断权限、
+      if (!checkAccess(loginUserStore.loginUser, item.meta?.authCheck as String)) {
+        return false
+      }
+      return true
+    })
+    .map((item) => {
+      return {
+        key: item.path,
+        icon: item.meta?.icon,
+        label: item.name,
+        title: item.name,
+      }
+    }),
 )
 
 // 定义菜单的跳转事件
@@ -106,6 +132,23 @@ const doMenuClick = ({ key }: { key: string }) => {
   router.push({
     path: key,
   })
+}
+
+
+// 用户注销
+const doLogout = async () => {
+  const res = await userLogoutUsingPost()
+  console.log(res)
+  if (res.data.code == 0){
+    loginUserStore.setLoginUser({
+      userName: '未登录',
+    })
+    // 跳转到登录页面
+    message.success('退出登录成功')
+    await router.push('/user/login')
+  } else {
+    message.error('退出登录失败', res.data.message)
+  }
 }
 </script>
 
