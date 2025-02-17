@@ -1,6 +1,6 @@
 import HomePage from '@/pages/HomePage.vue'
 import UserLoginPage from '@/pages/user/UserLoginPage.vue'
-import PictureManagePage from '@/pages/PictureManagePage.vue'
+import PictureManagePage from '@/pages/admin/PictureManagePage.vue'
 import { MailOutlined } from '@ant-design/icons-vue'
 import { h } from 'vue'
 
@@ -8,11 +8,13 @@ import UserRegisterPage from '@/pages/user/UserRegisterPage.vue'
 import UserManagePage from '@/pages/admin/UserManagePage.vue'
 import { ACCESS_ENUM } from '@/access/accessEnum'
 import noAuth from '@/pages/NoAuth.vue'
+import AddPicturePage from '@/pages/picture/AddPicturePage.vue'
+import PictureDetailPage from '@/pages/picture/PictureDetailPage.vue'
 
 const routes = [
   {
     path: '/',
-    name: 'home',
+    name: '主页',
     // component: HomeView,
     component: HomePage,
     meta: {
@@ -51,6 +53,20 @@ const routes = [
     component: PictureManagePage,
     meta: {
       authCheck: ACCESS_ENUM.ADMIN,
+    }
+  },
+  {
+    path: '/picture/add',
+    name: '创建图片',
+    component: AddPicturePage,
+  },
+  {
+    path: '/picture/:id',
+    name: '图片详情',
+    component: PictureDetailPage,
+    props: true,
+    meta: {
+      show: false,
     }
   },
   {

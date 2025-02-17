@@ -43,7 +43,7 @@ public class PictureController {
      * 暂时给一个预置的标签分类给前端用户选择，后续再动态进行管理
      * @return
      */
-    @PostMapping("/tag_category")
+    @GetMapping("/tag_category")
     public BaseResponse<PictureTagCategory> listPictureTagCategory(){
         PictureTagCategory pictureTagCategory = new PictureTagCategory();
         List<String> tagList = Arrays.asList("热门", "搞笑", "生活", "高清", "艺术", "校园", "背景", "简历", "创意");
