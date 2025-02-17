@@ -9,7 +9,7 @@ import lombok.Getter;
 public enum ErrorCode {
 
     SUCCESS(0, "成功"),
-    PARAM_ERROR(40000, "参数错误"),
+    PARAMS_ERROR(40000, "参数错误"),
     NOT_LOGIN_ERROR(40100, "未登录"),
     NO_AUTH_ERROR(40101, "无权限"),
     NOT_FOUND(40400, "找不到资源"),

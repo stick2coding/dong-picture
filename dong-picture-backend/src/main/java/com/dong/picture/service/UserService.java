@@ -1,7 +1,7 @@
 package com.dong.picture.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.dong.picture.model.dto.UserQueryRequest;
+import com.dong.picture.model.dto.user.UserQueryRequest;
 import com.dong.picture.model.vo.LoginUserVO;
 import com.dong.picture.model.entity.User;
 import com.baomidou.mybatisplus.extension.service.IService;
@@ -69,4 +69,11 @@ public interface UserService extends IService<User> {
     long userRegister(String userAccount, String userPassword, String checkPassword);
 
     String getEncryptPassword(String userPassword);
+
+    /**
+     * 判断是否为管理员
+     * @param user
+     * @return
+     */
+    boolean isAdmin(User user);
 }

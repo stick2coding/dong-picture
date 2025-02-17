@@ -22,3 +22,35 @@ create table if not exists user
 -- 常用字段添加索引
 -- 扩展功能1：会员功能（role可以增加vip，然后新增几个字段表示会员的有效期等信息）
 -- 扩展功能2：用户邀请功能（新增两个字段，一个是当前用户的邀请码，一个是当前用户是被谁邀请的）
+
+
+-- 图片表
+create table if not exists picture
+(
+    id           bigint auto_increment comment 'id' primary key,
+    url          varchar(512)                       not null comment '图片 url',
+    name         varchar(128)                       not null comment '图片名称',
+    introduction varchar(512)                       null comment '简介',
+    category     varchar(64)                        null comment '分类',
+    tags         varchar(512)                       null comment '标签（JSON 数组）',
+    picSize      bigint                             null comment '图片体积',
+    picWidth     int                                null comment '图片宽度',
+    picHeight    int                                null comment '图片高度',
+    picScale     double                             null comment '图片宽高比例',
+    picFormat    varchar(32)                        null comment '图片格式',
+    userId       bigint                             not null comment '创建用户 id',
+    createTime   datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    editTime     datetime default CURRENT_TIMESTAMP not null comment '编辑时间',
+    updateTime   datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
+    isDelete     tinyint  default 0                 not null comment '是否删除',
+    INDEX idx_name (name),                 -- 提升基于图片名称的查询性能
+    INDEX idx_introduction (introduction), -- 用于模糊搜索图片简介
+    INDEX idx_category (category),         -- 提升基于分类的查询性能
+    INDEX idx_tags (tags),                 -- 提升基于标签的查询性能
+    INDEX idx_userId (userId)              -- 提升基于用户 ID 的查询性能
+) comment '图片' collate = utf8mb4_unicode_ci;
+
+-- 基础信息：包括图片的 URL、名称、简介、分类、标签等，满足图片管理和分类筛选的基本需求。
+-- 图片属性：记录图片大小、分辨率（宽度、高度）、宽高比和格式，方便后续按照多种维度筛选图片。
+-- 用户关联：通过 userId 字段关联用户表，表示由哪个用户创建了该图片。
+-- 多个标签：由于标签支持多个值，使用 JSON 数组字符串来维护，而不是单独新建一个表，可以提高开发效率。示例格式：["标签1", "标签2"]

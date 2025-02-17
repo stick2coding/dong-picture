@@ -1,4 +1,4 @@
-package com.dong.picture.model.dto;
+package com.dong.picture.model.dto.user;
 
 import com.dong.picture.common.PageRequest;
 import lombok.Data;

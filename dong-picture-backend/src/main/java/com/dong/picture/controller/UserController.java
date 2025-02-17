@@ -9,8 +9,7 @@ import com.dong.picture.constant.UserConstant;
 import com.dong.picture.exception.BusinessException;
 import com.dong.picture.exception.ErrorCode;
 import com.dong.picture.exception.ThrowUtils;
-import com.dong.picture.model.dto.*;
-import com.dong.picture.model.enums.UserRoleEnum;
+import com.dong.picture.model.dto.user.*;
 import com.dong.picture.model.vo.LoginUserVO;
 import com.dong.picture.model.entity.User;
 import com.dong.picture.model.vo.UserVO;
@@ -21,7 +20,6 @@ import org.springframework.web.bind.annotation.*;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/user")
@@ -43,7 +41,7 @@ public class UserController {
 
     @PostMapping("/login")
     public BaseResponse<LoginUserVO> userLogin(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest request){
-        ThrowUtils.throwIf(userLoginRequest==null, ErrorCode.PARAM_ERROR);
+        ThrowUtils.throwIf(userLoginRequest==null, ErrorCode.PARAMS_ERROR);
         String userAccount = userLoginRequest.getUserAccount();
         String userPassword = userLoginRequest.getUserPassword();
         LoginUserVO loginUserVO = userService.userLogin(userAccount, userPassword, request);
@@ -52,7 +50,7 @@ public class UserController {
 
     @PostMapping("/register")
     public BaseResponse<Long> userRegister(@RequestBody UserRegisterRequest userRegisterRequest){
-        ThrowUtils.throwIf(userRegisterRequest==null, ErrorCode.PARAM_ERROR);
+        ThrowUtils.throwIf(userRegisterRequest==null, ErrorCode.PARAMS_ERROR);
         String userAccount = userRegisterRequest.getUserAccount();
         String userPassword = userRegisterRequest.getUserPassword();
         String checkPassword = userRegisterRequest.getCheckPassword();
@@ -81,7 +79,7 @@ public class UserController {
     @PostMapping("/add")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Long> addUser(@RequestBody UserAddRequest userAddRequest){
-        ThrowUtils.throwIf(userAddRequest==null, ErrorCode.PARAM_ERROR);
+        ThrowUtils.throwIf(userAddRequest==null, ErrorCode.PARAMS_ERROR);
         User user  = new User();
         BeanUtils.copyProperties(userAddRequest, user);
         // 创建用户时赋予默认密码
@@ -89,7 +87,7 @@ public class UserController {
         String encryptPassword = userService.getEncryptPassword(DEFAULT_PASSWORD);
         user.setUserPassword(encryptPassword);
         Boolean result = userService.save(user);
-        ThrowUtils.throwIf(!result, ErrorCode.PARAM_ERROR, "创建用户失败");
+        ThrowUtils.throwIf(!result, ErrorCode.PARAMS_ERROR, "创建用户失败");
         return ResultUtils.success(user.getId());
     }
 
@@ -100,9 +98,9 @@ public class UserController {
     @GetMapping("/get")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<User> getUserById(long id){
-        ThrowUtils.throwIf(id<=0, ErrorCode.PARAM_ERROR);
+        ThrowUtils.throwIf(id<=0, ErrorCode.PARAMS_ERROR);
         User user = userService.getById(id);
-        ThrowUtils.throwIf(user==null, ErrorCode.PARAM_ERROR, "用户不存在");
+        ThrowUtils.throwIf(user==null, ErrorCode.PARAMS_ERROR, "用户不存在");
         return ResultUtils.success(user);
     }
 
@@ -127,7 +125,7 @@ public class UserController {
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> deleteUser(@RequestBody DeleteRequest deleteRequest){
         if (deleteRequest == null || deleteRequest.getId() <= 0){
-            throw new BusinessException(ErrorCode.PARAM_ERROR);
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         boolean b = userService.removeById(deleteRequest.getId());
         return ResultUtils.success(b);
@@ -137,7 +135,7 @@ public class UserController {
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> updateUser(@RequestBody UserUpdateRequest userUpdateRequest){
         if (userUpdateRequest == null || userUpdateRequest.getId() == null){
-            throw new BusinessException(ErrorCode.PARAM_ERROR);
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         User user = new User();
         BeanUtils.copyProperties(userUpdateRequest, user);
@@ -149,7 +147,7 @@ public class UserController {
     @PostMapping("/list/page")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Page<UserVO>> listUserVOByPage(@RequestBody UserQueryRequest userQueryRequest) {
-        ThrowUtils.throwIf(userQueryRequest == null, ErrorCode.PARAM_ERROR);
+        ThrowUtils.throwIf(userQueryRequest == null, ErrorCode.PARAMS_ERROR);
         long current = userQueryRequest.getCurrent();
         long size = userQueryRequest.getPageSize();
 

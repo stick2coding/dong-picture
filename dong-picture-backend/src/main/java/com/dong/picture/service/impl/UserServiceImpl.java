@@ -8,7 +8,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.dong.picture.exception.BusinessException;
 import com.dong.picture.exception.ErrorCode;
-import com.dong.picture.model.dto.UserQueryRequest;
+import com.dong.picture.model.dto.user.UserQueryRequest;
 import com.dong.picture.model.vo.LoginUserVO;
 import com.dong.picture.model.entity.User;
 import com.dong.picture.model.enums.UserRoleEnum;
@@ -21,7 +21,6 @@ import org.springframework.util.DigestUtils;
 import javax.servlet.http.HttpServletRequest;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -43,7 +42,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public QueryWrapper<User> getQueryWrapper(UserQueryRequest userQueryRequest) {
         if (userQueryRequest == null){
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "请求参数为空");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
         }
 
         Long id = userQueryRequest.getId();
@@ -156,13 +155,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     public LoginUserVO userLogin(String userAccount, String userPassword, HttpServletRequest request) {
         // 校验
         if(StrUtil.hasBlank(userAccount,userPassword)){
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "参数不能为空");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数不能为空");
         }
         if(userAccount.length() < 4){
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "用户账号过短");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户账号过短");
         }
         if(userPassword.length() < 8){
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "用户密码过短");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户密码过短");
         }
 
         // 加密
@@ -175,7 +174,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         User user = this.baseMapper.selectOne(queryWrapper);
         // 用户不存在
         if(user == null){
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "用户不存在或密码错误");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户不存在或密码错误");
         }
         // 记住用户
         request.getSession().setAttribute(USER_LOGIN_STATE, user);
@@ -187,24 +186,24 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public long userRegister(String userAccount, String userPassword, String checkPassword) {
         if(StrUtil.hasBlank(userAccount,userPassword,checkPassword)){
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "参数不能为空");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数不能为空");
         }
         if(userAccount.length()<4){
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "用户账号过短");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户账号过短");
         }
         if(userPassword.length()<8 || checkPassword.length()<8){
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "用户密码过短");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户密码过短");
         }
         // 两次密码不一致
         if(!userPassword.equals(checkPassword)){
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "两次密码不一致");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "两次密码不一致");
         }
         // 检查用户名是否重复
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("userAccount",userAccount);
         long count = this.baseMapper.selectCount(queryWrapper);
         if(count>0){
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "账号重复");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "账号重复");
         }
 
         // 密码加密
@@ -217,7 +216,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         user.setUserRole(UserRoleEnum.USER.getValue());
         boolean save = this.save(user);
         if (!save){
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "注册失败");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "注册失败");
         }
         return user.getId();
     }
@@ -232,6 +231,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 盐值
         final String SALT = "dong";
         return DigestUtils.md5DigestAsHex((SALT + userPassword).getBytes());
+    }
+
+    @Override
+    public boolean isAdmin(User user) {
+        return user != null && UserRoleEnum.ADMIN.getValue().equals(user.getUserRole());
     }
 }
 
