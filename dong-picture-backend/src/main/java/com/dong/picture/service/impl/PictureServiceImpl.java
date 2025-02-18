@@ -11,6 +11,9 @@ import com.dong.picture.exception.BusinessException;
 import com.dong.picture.exception.ErrorCode;
 import com.dong.picture.exception.ThrowUtils;
 import com.dong.picture.manager.FileManager;
+import com.dong.picture.manager.upload.FilePictureUpload;
+import com.dong.picture.manager.upload.PictureUploadTemplate;
+import com.dong.picture.manager.upload.UrlPictureUpload;
 import com.dong.picture.model.dto.file.UploadPictureResult;
 import com.dong.picture.model.dto.picture.PictureQueryRequest;
 import com.dong.picture.model.dto.picture.PictureReviewRequest;
@@ -49,6 +52,12 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
 
     @Autowired
     UserService userService;
+
+    @Autowired
+    private FilePictureUpload filePictureUpload;
+
+    @Autowired
+    private UrlPictureUpload urlPictureUpload;
 
     /**
      * 将查询请求转为查数据库的请求对象
@@ -178,10 +187,17 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         }
     }
 
-
-
+    /**
+     * 由于增加了上传图片的方式
+     * 1、原有通过文件上传
+     * 2、现在增加了URL上传，所以参数需要调整为对象，根据对象类型来选择上传方式
+     * @param inputSource
+     * @param pictureUploadRequest
+     * @param loginUser
+     * @return
+     */
     @Override
-    public PictureVO uploadPicture(MultipartFile multipartFile, PictureUploadRequest pictureUploadRequest, User loginUser) {
+    public PictureVO uploadPicture(Object inputSource, PictureUploadRequest pictureUploadRequest, User loginUser) {
         ThrowUtils.throwIf(loginUser == null, ErrorCode.NO_AUTH_ERROR);
         // 上传图片前需要先判断是新上传还是更新
         Long pictureId = null;
@@ -205,7 +221,14 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         // 前置校验完成，开始上传，并返回信息
         // 这里的存储路径以用户为单位进行隔离
         String uploadPathPrefix = String.format("public/%s", loginUser.getId());
-        UploadPictureResult uploadPictureResult = fileManager.uploadPicture(multipartFile, uploadPathPrefix);
+        // 这里先获取一个模板方法
+        PictureUploadTemplate pictureUploadTemplate = filePictureUpload;
+        // 然后判断输入源，如果是String类型，就转变模板方法的类型
+        if (inputSource instanceof String){
+            pictureUploadTemplate = urlPictureUpload;
+        }
+        //UploadPictureResult uploadPictureResult = fileManager.uploadPicture(multipartFile, uploadPathPrefix);
+        UploadPictureResult uploadPictureResult = pictureUploadTemplate.uploadPicture(inputSource, uploadPathPrefix);
         // 构造存入数据库的信息
         Picture picture = new Picture();
         picture.setUrl(uploadPictureResult.getUrl());
