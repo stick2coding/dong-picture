@@ -85,7 +85,7 @@ public class PictureController {
     @PostMapping("/upload/url")
     //@AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<PictureVO> uploadPictureByUrl(
-            PictureUploadRequest pictureUploadRequest,
+            @RequestBody PictureUploadRequest pictureUploadRequest,
             HttpServletRequest request){
         User loginUser = userService.getLoginUser(request);
         String fileUrl = pictureUploadRequest.getFileUrl();
