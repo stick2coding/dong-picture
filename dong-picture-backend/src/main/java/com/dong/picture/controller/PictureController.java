@@ -267,4 +267,14 @@ public class PictureController {
         return ResultUtils.success(true);
     }
 
+
+    @PostMapping("/upload/batch")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Integer> uploadPictureByBatch(@RequestBody PictureUploadBatchRequest pictureUploadByBatchRequest,
+                                                      HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        int pictureNum = pictureService.uploadPictureByBatch(pictureUploadByBatchRequest, loginUser);
+        return ResultUtils.success(pictureNum);
+    }
+
 }

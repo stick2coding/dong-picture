@@ -17,6 +17,7 @@ import com.dong.picture.manager.upload.UrlPictureUpload;
 import com.dong.picture.model.dto.file.UploadPictureResult;
 import com.dong.picture.model.dto.picture.PictureQueryRequest;
 import com.dong.picture.model.dto.picture.PictureReviewRequest;
+import com.dong.picture.model.dto.picture.PictureUploadBatchRequest;
 import com.dong.picture.model.dto.picture.PictureUploadRequest;
 import com.dong.picture.model.entity.Picture;
 import com.dong.picture.model.entity.User;
@@ -26,12 +27,18 @@ import com.dong.picture.model.vo.UserVO;
 import com.dong.picture.service.PictureService;
 import com.dong.picture.mapper.PictureMapper;
 import com.dong.picture.service.UserService;
+import lombok.extern.slf4j.Slf4j;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
+import java.io.IOException;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +51,7 @@ import java.util.stream.Collectors;
 * @createDate 2025-02-17 16:17:36
 */
 @Service
+@Slf4j
 public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     implements PictureService{
 
@@ -231,8 +239,14 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         UploadPictureResult uploadPictureResult = pictureUploadTemplate.uploadPicture(inputSource, uploadPathPrefix);
         // 构造存入数据库的信息
         Picture picture = new Picture();
+        // 名称获取逻辑（优先从自身的名字取值，如果没有再从上传解析结果中取值）
+        String picName = uploadPictureResult.getPicName();
+        if (pictureUploadRequest != null && StrUtil.isNotBlank(pictureUploadRequest.getPicName())){
+            picName = pictureUploadRequest.getPicName();
+        }
+        picture.setName(picName);
+        // 其他信息
         picture.setUrl(uploadPictureResult.getUrl());
-        picture.setName(uploadPictureResult.getPicName());
         picture.setPicSize(uploadPictureResult.getPicSize());
         picture.setPicWidth(uploadPictureResult.getPicWidth());
         picture.setPicHeight(uploadPictureResult.getPicHeight());
@@ -305,6 +319,77 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             picture.setReviewStatus(PictureReviewStatusEnum.REVIEWING.getValue());
         }
 
+    }
+
+    @Override
+    public Integer uploadPictureByBatch(PictureUploadBatchRequest pictureUploadByBatchRequest, User loginUser) {
+        // 拿到关键词（搜索词）
+        String searchText = pictureUploadByBatchRequest.getSearchText();
+        // 补充名字前缀
+        String namePrefix = pictureUploadByBatchRequest.getNamePrefix();
+        if (StrUtil.isBlank(namePrefix)){
+            namePrefix = searchText;
+        }
+        // 拿到数量
+        Integer count = pictureUploadByBatchRequest.getCount();
+        ThrowUtils.throwIf(count > 30, ErrorCode.PARAMS_ERROR, "最多上传30张图片");
+
+        // 拿到搜索地址
+        String searchUrl = String.format("https://cn.bing.com/images/async?q=%s&mmasync=1", searchText);
+
+        // 定义一个文档用于接收拿到的HTML页面
+        Document document;
+        try {
+            document = Jsoup.connect(searchUrl).get();
+        } catch (IOException e) {
+            log.error("连接失败", e);
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "连接失败");
+        }
+        // 从bing的F12控制台可以看到图片在dgControl下面
+        Element div = document.getElementsByClass("dgControl").first();
+        if (ObjUtil.isNull(div)){
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "搜索结果为空");
+        }
+        // 继续往下拿到图片元素集合
+        Elements imgElementList = div.select("img.mimg");
+        int uploadCount = 0;
+        // 遍历进行导入
+        for (Element imgElement : imgElementList){
+            // 拿到URL
+            String fileUrl = imgElement.attr("src");
+            if (StrUtil.isBlank(fileUrl)){
+                log.info("图片地址为空，地址：{}已跳过", fileUrl);
+                continue;
+            }
+            // 处理图片
+            // 处理原地址，防止出现转义问题
+            // 注意,图片的地址后面有很多附加参数,比如?w=199&h=180,在与导入图片时一定要移除!否则会影响
+            // 图片的质量,还有可能导致上传到对象存储的文件包含被转义的特殊字符,引发无法访问等问题。
+            int questionMarkIndex = fileUrl.indexOf("?");
+            if (questionMarkIndex > -1){
+                fileUrl = fileUrl.substring(0, questionMarkIndex);
+            }
+
+            // 开始上传
+            PictureUploadRequest pictureUploadRequest = new PictureUploadRequest();
+            // 补充图片名称
+            if (StrUtil.isNotBlank(namePrefix)){
+                pictureUploadRequest.setPicName(namePrefix + (uploadCount + 1));
+            }
+            try {
+                PictureVO pictureVO = this.uploadPicture(fileUrl, pictureUploadRequest, loginUser);
+                log.info("图片导入成功，图片ID：{}", pictureVO.getId());
+                uploadCount++;
+            }catch (Exception e){
+                log.error("图片导入失败，图片地址：{}", fileUrl, e);
+                continue;
+            }
+            if (uploadCount >= count){
+                break;
+            }
+
+        }
+        return uploadCount;
     }
 }
 
