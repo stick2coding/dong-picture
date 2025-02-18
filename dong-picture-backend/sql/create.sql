@@ -54,3 +54,16 @@ create table if not exists picture
 -- 图片属性：记录图片大小、分辨率（宽度、高度）、宽高比和格式，方便后续按照多种维度筛选图片。
 -- 用户关联：通过 userId 字段关联用户表，表示由哪个用户创建了该图片。
 -- 多个标签：由于标签支持多个值，使用 JSON 数组字符串来维护，而不是单独新建一个表，可以提高开发效率。示例格式：["标签1", "标签2"]
+
+-- 增加审核功能
+ALTER TABLE picture
+    -- 添加新列
+    ADD COLUMN reviewStatus INT DEFAULT 0 NOT NULL COMMENT '审核状态：0-待审核; 1-通过; 2-拒绝',
+    ADD COLUMN reviewMessage VARCHAR(512) NULL COMMENT '审核信息',
+    ADD COLUMN reviewerId BIGINT NULL COMMENT '审核人 ID',
+    ADD COLUMN reviewTime DATETIME NULL COMMENT '审核时间';
+
+-- 创建基于 reviewStatus 列的索引
+CREATE INDEX idx_reviewStatus ON picture (reviewStatus);
+
+-- 1)审核状态:reviewStatus使用整数(0、1、2)表示不同的审核状态,而不是用字符串,可以节约表的空间、提升查找效率。

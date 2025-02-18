@@ -14,6 +14,7 @@ import com.dong.picture.exception.ThrowUtils;
 import com.dong.picture.model.dto.picture.*;
 import com.dong.picture.model.entity.Picture;
 import com.dong.picture.model.entity.User;
+import com.dong.picture.model.enums.PictureReviewStatusEnum;
 import com.dong.picture.model.vo.PictureVO;
 import com.dong.picture.service.PictureService;
 import com.dong.picture.service.UserService;
@@ -54,8 +55,18 @@ public class PictureController {
     }
 
 
+    /**
+     * 上传图片（这里其实应该叫创建图片，上传到对象存储后，存储基本信息到数据库）
+     * 支持用户修改图片信息
+     * 1、只能管理员上传
+     * 2、当前版本改为所有人均可以上传，且可以更新图片信息，所以在开发权限后，应当限制只有管理员或者本人才可更新
+     * @param multipartFile
+     * @param pictureUploadRequest
+     * @param request
+     * @return
+     */
     @PostMapping("/upload")
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    //@AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<PictureVO> uploadPicture(
             @RequestPart("file") MultipartFile multipartFile,
             PictureUploadRequest pictureUploadRequest,
@@ -98,7 +109,8 @@ public class PictureController {
      */
     @PostMapping("/update")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
-    public BaseResponse<Boolean> updatePicture(@RequestBody PictureUpdateRequest pictureUpdateRequest){
+    public BaseResponse<Boolean> updatePicture(@RequestBody PictureUpdateRequest pictureUpdateRequest,
+                                               HttpServletRequest request){
         if (pictureUpdateRequest == null || pictureUpdateRequest.getId() <= 0){
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
@@ -113,6 +125,9 @@ public class PictureController {
         long id = pictureUpdateRequest.getId();
         Picture oldPicture = pictureService.getById(id);
         ThrowUtils.throwIf(oldPicture == null, ErrorCode.NOT_FOUND, "图片不存在");
+        // 这里要完善审核信息相关字段
+        User loginUser = userService.getLoginUser(request);
+        pictureService.fillPictureReviewParams(picture, loginUser);
         // 操作数据库
         boolean result = pictureService.updateById(picture);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "更新失败");
@@ -169,6 +184,8 @@ public class PictureController {
 
     /**
      * 分页获取图片VO列表
+     * 这个接口是给主页所有用户使用的
+     * 这里需要增加权限控制，只能看到审核通过后的图片
      */
     @PostMapping("/list/page/vo")
     public BaseResponse<Page<PictureVO>> listPictureVOByPage(@RequestBody PictureQueryRequest pictureQueryRequest,
@@ -177,6 +194,9 @@ public class PictureController {
         long size = pictureQueryRequest.getPageSize();
         // 限制爬虫
         ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
+        // 普通用户只能看到审核通过后的图片
+        pictureQueryRequest.setReviewStatus(PictureReviewStatusEnum.PASS.getValue());
+        // 查询
         Page<Picture>picturePage = pictureService.page(new Page<>(),
                 pictureService.getQueryWrapper(pictureQueryRequest));
         // 封装返回
@@ -209,9 +229,25 @@ public class PictureController {
         if (!oldPicture.getUserId().equals(loginUser.getId()) && !userService.isAdmin(loginUser)) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
+        // 这里要完善审核信息相关字段
+        pictureService.fillPictureReviewParams(picture, loginUser);
         // 操作数据库
         boolean result = pictureService.updateById(picture);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "更新失败");
+        return ResultUtils.success(true);
+    }
+
+
+    @PostMapping("/review")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Boolean> doPictureReview(@RequestBody PictureReviewRequest pictureReviewRequest,
+                                                 HttpServletRequest request) {
+        if (pictureReviewRequest == null || pictureReviewRequest.getId() <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User loginUser = userService.getLoginUser(request);
+        pictureService.doPictureReview(pictureReviewRequest, loginUser);
+
         return ResultUtils.success(true);
     }
 
