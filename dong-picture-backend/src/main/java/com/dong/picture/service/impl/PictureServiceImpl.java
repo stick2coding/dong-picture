@@ -235,7 +235,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             pictureUploadTemplate = urlPictureUpload;
         }
         //UploadPictureResult uploadPictureResult = fileManager.uploadPicture(multipartFile, uploadPathPrefix);
-        UploadPictureResult uploadPictureResult = pictureUploadTemplate.uploadPicture(inputSource, uploadPathPrefix);
+        //UploadPictureResult uploadPictureResult = pictureUploadTemplate.uploadPicture(inputSource, uploadPathPrefix);
+        // 使用带有图片压缩规则的上传方法
+        UploadPictureResult uploadPictureResult = pictureUploadTemplate.uploadPictureWithRule(inputSource, uploadPathPrefix);
         // 构造存入数据库的信息
         Picture picture = new Picture();
         // 名称获取逻辑（优先从自身的名字取值，如果没有再从上传解析结果中取值）
@@ -246,6 +248,8 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         picture.setName(picName);
         // 其他信息
         picture.setUrl(uploadPictureResult.getUrl());
+        // 缩略图
+        picture.setThumbnailUrl(uploadPictureResult.getThumbnailUrl());
         picture.setPicSize(uploadPictureResult.getPicSize());
         picture.setPicWidth(uploadPictureResult.getPicWidth());
         picture.setPicHeight(uploadPictureResult.getPicHeight());

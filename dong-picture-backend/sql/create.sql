@@ -67,3 +67,8 @@ ALTER TABLE picture
 CREATE INDEX idx_reviewStatus ON picture (reviewStatus);
 
 -- 1)审核状态:reviewStatus使用整数(0、1、2)表示不同的审核状态,而不是用字符串,可以节约表的空间、提升查找效率。
+
+ALTER TABLE picture
+    -- 添加新列
+    ADD COLUMN thumbnailUrl varchar(512) NULL COMMENT '缩略图 url';
+
