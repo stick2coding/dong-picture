@@ -10,6 +10,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.dong.picture.exception.BusinessException;
 import com.dong.picture.exception.ErrorCode;
 import com.dong.picture.exception.ThrowUtils;
+import com.dong.picture.manager.CosManager;
 import com.dong.picture.manager.FileManager;
 import com.dong.picture.manager.upload.FilePictureUpload;
 import com.dong.picture.manager.upload.PictureUploadTemplate;
@@ -34,6 +35,7 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import javax.servlet.http.HttpServletRequest;
@@ -65,6 +67,8 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
 
     @Autowired
     private UrlPictureUpload urlPictureUpload;
+    @Autowired
+    private CosManager cosManager;
 
     /**
      * 将查询请求转为查数据库的请求对象
@@ -401,6 +405,28 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
 
         }
         return uploadCount;
+    }
+
+    @Async
+    @Override
+    public void clearPictureFile(Picture oldPicture) {
+        // 首先需要判断一下当前图片的URL是不是被多个记录共用
+        String pictureUrl = oldPicture.getUrl();
+        long count = this.lambdaQuery()
+                .eq(Picture::getUrl, pictureUrl)
+                .count();
+        // 如果还有其他人用，就不清理
+        if (count > 1){
+            return;
+        }
+
+        // 清理
+        cosManager.deleteObject(oldPicture.getUrl());
+        // 清理缩略图
+        String thumbnailUrl = oldPicture.getThumbnailUrl();
+        if (StrUtil.isNotBlank(thumbnailUrl)){
+            cosManager.deleteObject(thumbnailUrl);
+        }
     }
 }
 
