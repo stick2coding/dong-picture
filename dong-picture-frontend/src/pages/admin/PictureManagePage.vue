@@ -1,7 +1,10 @@
 <template>
   <a-flex justify="space-between">
     <h2>图片管理</h2>
-    <a-button type="primary" href="/picture/add" target="_blank">+ 创建图片</a-button>
+    <a-space>
+      <a-button type="primary" href="/add_picture" target="_blank">+ 创建图片</a-button>
+      <a-button type="primary" href="/add_picture/batch" target="_blank" ghost>+ 批量创建图片</a-button>
+    </a-space>
   </a-flex>
   <!--这里是搜索栏，绑定的模型就是搜索参数，执行动作就是执行搜索-->
   <a-form layout="inline" :model="searchParams" @finish="doSearch">

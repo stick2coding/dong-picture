@@ -4,13 +4,12 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dong.picture.model.dto.picture.PictureQueryRequest;
 import com.dong.picture.model.dto.picture.PictureReviewRequest;
-import com.dong.picture.model.dto.picture.PictureUploadBatchRequest;
+import com.dong.picture.model.dto.picture.PictureUploadByBatchRequest;
 import com.dong.picture.model.dto.picture.PictureUploadRequest;
 import com.dong.picture.model.entity.Picture;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.dong.picture.model.entity.User;
 import com.dong.picture.model.vo.PictureVO;
-import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -76,6 +75,6 @@ public interface PictureService extends IService<Picture> {
      * @param loginUser
      * @return
      */
-    Integer uploadPictureByBatch(PictureUploadBatchRequest pictureUploadByBatchRequest, User loginUser);
+    Integer uploadPictureByBatch(PictureUploadByBatchRequest pictureUploadByBatchRequest, User loginUser);
 
 }

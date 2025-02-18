@@ -10,6 +10,7 @@ import { ACCESS_ENUM } from '@/access/accessEnum'
 import noAuth from '@/pages/NoAuth.vue'
 import AddPicturePage from '@/pages/picture/AddPicturePage.vue'
 import PictureDetailPage from '@/pages/picture/PictureDetailPage.vue'
+import AddPictureBatchPage from '@/pages/picture/AddPictureBatchPage.vue'
 
 const routes = [
   {
@@ -25,6 +26,9 @@ const routes = [
     path: '/about',
     name: 'about',
     component: () => import('../views/AboutView.vue'),
+    meta: {
+      show: false,
+    }
   },
   {
     path: '/user/login',
@@ -56,9 +60,17 @@ const routes = [
     }
   },
   {
-    path: '/picture/add',
+    path: '/add_picture',
     name: '创建图片',
     component: AddPicturePage,
+  },
+  {
+    path: '/add_picture/batch',
+    name: '批量创建图片',
+    component: AddPictureBatchPage,
+    meta: {
+      authCheck: ACCESS_ENUM.ADMIN,
+    }
   },
   {
     path: '/picture/:id',

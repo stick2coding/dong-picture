@@ -1,9 +1,9 @@
 package com.dong.picture.service.impl;
 
-import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -17,7 +17,7 @@ import com.dong.picture.manager.upload.UrlPictureUpload;
 import com.dong.picture.model.dto.file.UploadPictureResult;
 import com.dong.picture.model.dto.picture.PictureQueryRequest;
 import com.dong.picture.model.dto.picture.PictureReviewRequest;
-import com.dong.picture.model.dto.picture.PictureUploadBatchRequest;
+import com.dong.picture.model.dto.picture.PictureUploadByBatchRequest;
 import com.dong.picture.model.dto.picture.PictureUploadRequest;
 import com.dong.picture.model.entity.Picture;
 import com.dong.picture.model.entity.User;
@@ -35,7 +35,6 @@ import org.jsoup.select.Elements;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
@@ -322,7 +321,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     }
 
     @Override
-    public Integer uploadPictureByBatch(PictureUploadBatchRequest pictureUploadByBatchRequest, User loginUser) {
+    public Integer uploadPictureByBatch(PictureUploadByBatchRequest pictureUploadByBatchRequest, User loginUser) {
         // 拿到关键词（搜索词）
         String searchText = pictureUploadByBatchRequest.getSearchText();
         // 补充名字前缀
@@ -351,12 +350,20 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "搜索结果为空");
         }
         // 继续往下拿到图片元素集合
-        Elements imgElementList = div.select("img.mimg");
+//        Elements imgElementList = div.select("img.mimg");
+        // 这里是拿到原图信息，上面拿的是缩略图
+        Elements imgElementList = div.select("a.iusc");
         int uploadCount = 0;
         // 遍历进行导入
         for (Element imgElement : imgElementList){
             // 拿到URL
-            String fileUrl = imgElement.attr("src");
+//            String fileUrl = imgElement.attr("src");
+            String m_attr = imgElement.attr("m");
+            // 这是个map类型的，需要转婴喜爱
+            Map<String, String> mMap = JSONUtil.toBean(m_attr, Map.class);
+            String fileUrl = mMap.get("murl");
+            // 这里有个问题，就是有些URL本身没有后缀
+            // 比如这样的 http://puui.qpic.cn/vpic_cover/v335978hgu8/v335978hgu8_hz.jpg/1280
             if (StrUtil.isBlank(fileUrl)){
                 log.info("图片地址为空，地址：{}已跳过", fileUrl);
                 continue;

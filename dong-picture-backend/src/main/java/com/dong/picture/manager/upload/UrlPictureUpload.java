@@ -77,7 +77,8 @@ public class UrlPictureUpload extends PictureUploadTemplate{
     @Override
     protected String getOriginFileName(Object inputSource) {
         String fileUrl = (String) inputSource;
-        return FileUtil.mainName(fileUrl);
+        // 通过hutlool.mainName可能拿不到后缀
+        return fileUrl.substring(fileUrl.lastIndexOf("/") + 1);
     }
 
     @Override

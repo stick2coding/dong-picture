@@ -1,6 +1,5 @@
 package com.dong.picture.controller;
 
-import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dong.picture.annotation.AuthCheck;
@@ -268,9 +267,15 @@ public class PictureController {
     }
 
 
+    /**
+     * 批量上传图片
+     * @param pictureUploadByBatchRequest
+     * @param request
+     * @return
+     */
     @PostMapping("/upload/batch")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
-    public BaseResponse<Integer> uploadPictureByBatch(@RequestBody PictureUploadBatchRequest pictureUploadByBatchRequest,
+    public BaseResponse<Integer> uploadPictureByBatch(@RequestBody PictureUploadByBatchRequest pictureUploadByBatchRequest,
                                                       HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
         int pictureNum = pictureService.uploadPictureByBatch(pictureUploadByBatchRequest, loginUser);

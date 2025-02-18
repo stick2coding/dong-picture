@@ -8,7 +8,7 @@ import java.io.Serializable;
  * 这个是用于通过搜索引擎搜索指定的图片，然后批量自动化导入系统中的接口参数
  */
 @Data
-public class PictureUploadBatchRequest implements Serializable {
+public class PictureUploadByBatchRequest implements Serializable {
 
     /**
      * 搜索词
