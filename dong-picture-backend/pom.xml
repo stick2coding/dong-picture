@@ -96,6 +96,13 @@
             <version>2.9.3</version>
         </dependency>
 
+        <!-- Spring Session + Redis 服务重启后不需要重新登录-->
+        <dependency>
+            <groupId>org.springframework.session</groupId>
+            <artifactId>spring-session-data-redis</artifactId>
+        </dependency>
+
+
 
     </dependencies>
     <dependencyManagement>
