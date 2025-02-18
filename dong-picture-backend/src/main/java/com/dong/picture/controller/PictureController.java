@@ -1,5 +1,7 @@
 package com.dong.picture.controller;
 
+import cn.hutool.core.util.RandomUtil;
+import cn.hutool.crypto.digest.DigestUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dong.picture.annotation.AuthCheck;
@@ -17,9 +19,14 @@ import com.dong.picture.model.enums.PictureReviewStatusEnum;
 import com.dong.picture.model.vo.PictureVO;
 import com.dong.picture.service.PictureService;
 import com.dong.picture.service.UserService;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.util.DigestUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -27,6 +34,7 @@ import javax.servlet.http.HttpServletRequest;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping("/picture")
@@ -38,6 +46,18 @@ public class PictureController {
 
     @Autowired
     PictureService pictureService;
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
+
+    /**
+     * 本地缓存，用于缓存图片信息，避免频繁查询数据库
+     */
+    private final Cache<String, String> LOCAL_CACHE = Caffeine.newBuilder().initialCapacity(1024)
+            .maximumSize(10000L)
+            // 缓存 5 分钟移除
+            .expireAfterWrite(5L, TimeUnit.MINUTES)
+            .build();
+
 
     /**
      * 暂时给一个预置的标签分类给前端用户选择，后续再动态进行管理
@@ -217,6 +237,157 @@ public class PictureController {
         // 封装返回
         return ResultUtils.success(pictureService.getpictureVOPage(picturePage, request));
     }
+
+    @PostMapping("/list/page/vo/cache")
+    public BaseResponse<Page<PictureVO>> listPictureVOByPageWithCache(@RequestBody PictureQueryRequest pictureQueryRequest,
+                                                             HttpServletRequest request){
+        long current = pictureQueryRequest.getCurrent();
+        long size = pictureQueryRequest.getPageSize();
+        // 限制爬虫
+        ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
+        // 普通用户只能看到审核通过后的图片
+        pictureQueryRequest.setReviewStatus(PictureReviewStatusEnum.PASS.getValue());
+
+        // 构建缓存
+        // 这是查询条件
+        String queryCondition = JSONUtil.toJsonStr(pictureQueryRequest);
+        // 转hash
+        String hashKey = DigestUtils.md5DigestAsHex(queryCondition.getBytes());
+        // redis key
+        String redisKey = String.format("dongpicture:listPictureVOByPage:%s", hashKey);
+
+        // 先从redis中获取数据
+        ValueOperations<String, String> valueOperations = stringRedisTemplate.opsForValue();
+        String cachedValue = valueOperations.get(redisKey);
+        // 判断是否存在
+        if (cachedValue != null){
+            // 命中，直接返回
+            Page<PictureVO> cachedPictureVOPage = JSONUtil.toBean(cachedValue, Page.class);
+            return ResultUtils.success(cachedPictureVOPage);
+        }
+
+        // 没有命中查询数据库
+        Page<Picture> picturePage = pictureService.page(new Page<>(),
+                pictureService.getQueryWrapper(pictureQueryRequest));
+        // 封装返回
+        Page<PictureVO> pictureVOPage = pictureService.getpictureVOPage(picturePage, request);
+
+        // 存入缓存
+        String cacheValue = JSONUtil.toJsonStr(pictureVOPage);
+        // 随机设置过期时间，这里是为了避免同一时间多数key同时失效，造成雪崩
+        int expireSeconds = 300 + RandomUtil.randomInt(0, 300);
+        valueOperations.set(redisKey, cacheValue, expireSeconds, TimeUnit.SECONDS);
+
+        // 返回
+        return ResultUtils.success(pictureVOPage);
+    }
+
+    @PostMapping("/list/page/vo/local")
+    public BaseResponse<Page<PictureVO>> listPictureVOByPageWithLocal(@RequestBody PictureQueryRequest pictureQueryRequest,
+                                                                      HttpServletRequest request){
+        long current = pictureQueryRequest.getCurrent();
+        long size = pictureQueryRequest.getPageSize();
+        // 限制爬虫
+        ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
+        // 普通用户只能看到审核通过后的图片
+        pictureQueryRequest.setReviewStatus(PictureReviewStatusEnum.PASS.getValue());
+
+        // 构建缓存
+        // 这是查询条件
+        String queryCondition = JSONUtil.toJsonStr(pictureQueryRequest);
+        // 转hash
+        String hashKey = DigestUtils.md5DigestAsHex(queryCondition.getBytes());
+        // redis key
+        String redisKey = String.format("dongpicture:listPictureVOByPage:%s", hashKey);
+
+        // 先从本地缓存中获取
+        String cachedValue = LOCAL_CACHE.getIfPresent(redisKey);
+        // 判断是否存在
+        if (cachedValue != null){
+            // 命中，直接返回
+            Page<PictureVO> cachedPictureVOPage = JSONUtil.toBean(cachedValue, Page.class);
+            return ResultUtils.success(cachedPictureVOPage);
+        }
+
+        // 没有命中查询数据库
+        Page<Picture> picturePage = pictureService.page(new Page<>(),
+                pictureService.getQueryWrapper(pictureQueryRequest));
+        // 封装返回
+        Page<PictureVO> pictureVOPage = pictureService.getpictureVOPage(picturePage, request);
+
+        // 存入缓存
+        String cacheValue = JSONUtil.toJsonStr(pictureVOPage);
+        LOCAL_CACHE.put(redisKey, cacheValue);
+
+        // 返回
+        return ResultUtils.success(pictureVOPage);
+    }
+
+    /**
+     * 多级缓存
+     * @param pictureQueryRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/list/page/vo/cache/multi")
+    public BaseResponse<Page<PictureVO>> listPictureVOByPageWithMultiCache(@RequestBody PictureQueryRequest pictureQueryRequest,
+                                                                      HttpServletRequest request){
+        long current = pictureQueryRequest.getCurrent();
+        long size = pictureQueryRequest.getPageSize();
+        // 限制爬虫
+        ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
+        // 普通用户只能看到审核通过后的图片
+        pictureQueryRequest.setReviewStatus(PictureReviewStatusEnum.PASS.getValue());
+
+        // 构建缓存
+        // 这是查询条件
+        String queryCondition = JSONUtil.toJsonStr(pictureQueryRequest);
+        // 转hash
+        String hashKey = DigestUtils.md5DigestAsHex(queryCondition.getBytes());
+        // redis key
+        String redisKey = String.format("dongpicture:listPictureVOByPage:%s", hashKey);
+
+        // 先从本地缓存中获取
+        String cachedValue = LOCAL_CACHE.getIfPresent(redisKey);
+        // 判断是否存在
+        if (cachedValue != null){
+            // 命中，直接返回
+            Page<PictureVO> cachedPictureVOPage = JSONUtil.toBean(cachedValue, Page.class);
+            return ResultUtils.success(cachedPictureVOPage);
+        }
+
+        // 本地缓存没有命中，就查询redis缓存
+        ValueOperations<String, String> valueOperations = stringRedisTemplate.opsForValue();
+        cachedValue = valueOperations.get(redisKey);
+        // 判断是否存在
+        if (cachedValue != null){
+            // 命中，写入本地缓存
+            LOCAL_CACHE.put(redisKey, cachedValue);
+            // 返回
+            Page<PictureVO> cachedPictureVOPage = JSONUtil.toBean(cachedValue, Page.class);
+            return ResultUtils.success(cachedPictureVOPage);
+        }
+
+        // 没有命中查询数据库
+        Page<Picture> picturePage = pictureService.page(new Page<>(),
+                pictureService.getQueryWrapper(pictureQueryRequest));
+        // 封装返回
+        Page<PictureVO> pictureVOPage = pictureService.getpictureVOPage(picturePage, request);
+
+        // 存入缓存
+        String cacheValue = JSONUtil.toJsonStr(pictureVOPage);
+        // 存入本地缓存
+        LOCAL_CACHE.put(redisKey, cacheValue);
+        // 存入redis缓存
+        // 随机设置过期时间，这里是为了避免同一时间多数key同时失效，造成雪崩
+        int expireSeconds = 300 + RandomUtil.randomInt(0, 300);
+        valueOperations.set(redisKey, cacheValue, expireSeconds, TimeUnit.SECONDS);
+
+        // 返回
+        return ResultUtils.success(pictureVOPage);
+    }
+
+
 
     @PostMapping("/edit")
     public BaseResponse<Boolean> editPicture(@RequestBody PictureEditRequest pictureEditRequest, HttpServletRequest request) {
